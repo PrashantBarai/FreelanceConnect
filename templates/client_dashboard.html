@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreelanceConnect - Home</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-white shadow-md">
+        <div class="container mx-auto flex justify-between items-center py-4 px-6">
+            <a href="/home" class="text-2xl font-bold text-blue-600">
+                FreelanceConnect
+            </a>
+            <div class="flex space-x-6">
+                <a href="/home" class="text-gray-700 hover:text-blue-600">Dashboard</a>
+                <a href="#" class="text-gray-700 hover:text-blue-600">My Posts</a> 
+                <a href="#" class="text-gray-700 hover:text-blue-600">Profile</a>
+                <a href="/logout" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-center py-24">
+        <h1 class="text-4xl font-extrabold">Find the Best Freelancers for Your Business</h1>
+        <p class="mt-4 text-lg">Hire top talent and manage projects effortlessly.</p>
+        <button onclick="openModal()" class="mt-6 inline-block bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition">
+            Post a Job
+        </button>
+    </section>
+
+    <!-- Job Posting Modal -->
+    <div id="postModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-1/3">
+            <h2 class="text-2xl font-bold text-blue-600 text-center">Post a Job</h2>
+            <form action="/home/posts" method="POST" enctype="multipart/form-data" class="mt-4">
+                
+                <label class="block mb-2 text-gray-700">Job Title</label>
+                <input type="text" name="title" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none">
+
+                <label class="block mt-3 mb-2 text-gray-700">Job Description</label>
+                <textarea name="description" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"></textarea>
+
+                <label class="block mt-3 mb-2 text-gray-700">Upload File (Optional)</label>
+                <input type="file" name="document" class="w-full px-4 py-2 border rounded-lg">
+
+                <div class="flex justify-between mt-6">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                        Post Job
+                    </button>
+                    <button type="button" onclick="closeModal()" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+  
+
+    <!-- Footer -->
+    <footer class="mt-16 bg-gray-900 text-white py-6 text-center">
+        <p>&copy; 2025 FreelanceConnect. All rights reserved.</p>
+        <div class="mt-2">
+            <a href="#" class="text-gray-400 hover:text-gray-200 px-2">Privacy Policy</a> |
+            <a href="#" class="text-gray-400 hover:text-gray-200 px-2">Terms of Service</a> |
+            <a href="#" class="text-gray-400 hover:text-gray-200 px-2">Contact Us</a>
+        </div>
+    </footer>
+
+    <script>
+        function openModal() {
+            document.getElementById("postModal").classList.remove("hidden");
+        }
+
+        function closeModal() {
+            document.getElementById("postModal").classList.add("hidden");
+        }
+    </script>
+
+</body>
+</html>
