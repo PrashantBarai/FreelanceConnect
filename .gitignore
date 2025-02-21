@@ -1,2 +1,3 @@
 /venv/
-/uploads/
+/client_uploads/
+/*/__pycache__/
