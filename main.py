@@ -30,6 +30,11 @@ def allowed_file(filename):
 @app.route("/")
 def landingpage():
     return render_template("landingpage.html")
+from flask import send_from_directory
+
+@app.route("/client_uploads/<path:filename>")
+def uploaded_file(filename):
+    return send_from_directory("client_uploads", filename)
 
 @app.route("/auth/signup", methods=["GET", "POST"])
 def signup():
