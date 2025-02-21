@@ -4,7 +4,7 @@ from pymongo import MongoClient
 import bcrypt
 from werkzeug.utils import secure_filename
 import base64
-from utils.utils import convert_lists_to_html
+from utils.utils import convert_lists_to_html, save_profile_picture
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key_here"
@@ -14,6 +14,7 @@ db = client["freelanceconnect"]
 users_collection = db["users"]
 posts_collection = db["posts"]
 file_collection = db['files']
+profile_collection = db['profile']
 
 
 UPLOAD_FOLDER = "client_uploads"
@@ -87,7 +88,12 @@ def home():
             print(posts)  
             return render_template("client/client_dashboard.html", posts=posts)
         elif user_type == "freelancer":
-            return render_template("freelancer_dashboard.html")
+            posts = list(posts_collection.find({}))
+            
+            for post in posts:
+                post["_id"] = str(post["_id"])
+                post["Content"] = convert_lists_to_html(post["Content"])
+            return render_template("freelancer/freelancer_dashboard.html",posts=posts)
         return redirect(url_for("login"))
     return redirect(url_for("login"))
 
@@ -123,15 +129,11 @@ def posts():
             }
 
             inserted_post = posts_collection.insert_one(post_data)
-            post_id = str(inserted_post.inserted_id)  # Get post ID
-
-            # Define user-specific folder path
+            post_id = str(inserted_post.inserted_id)  
             user_folder = os.path.join(app.config["UPLOAD_FOLDER"], f"client_{session['userid']}")
             post_folder = os.path.join(user_folder, "posts", post_id, "multimedia")
 
-            os.makedirs(post_folder, exist_ok=True)  # Ensure folder exists
-
-            # Save uploaded documents
+            os.makedirs(post_folder, exist_ok=True)  
             for doc in documents:
                 if doc and allowed_file(doc.filename):
                     filename = secure_filename(doc.filename)
@@ -157,7 +159,47 @@ def my_posts():
     client_id = session["userid"]
     posts = list(posts_collection.find({"UID": client_id}))
 
-    return render_template("myposts.html", posts=posts)
+    return render_template("client/myposts.html", posts=posts)
+
+
+@app.route("/home/profile/<userid>", methods=["GET", "POST"])
+def client_profile(userid):
+    if "userid" not in session or session["user_type"].lower() != "client" or session["userid"] != userid:
+        return redirect(url_for("login"))
+
+    client_data = profile_collection.find_one({"_id": userid})
+    print(userid)
+    if request.method == "POST":
+        profile_pic = request.files.get("profile_pic")
+        name = request.form.get("name")
+        work_experience = request.form.get("work_experience")
+        education = request.form.get("education")
+        bio = request.form.get("bio")
+
+        update_data = {
+            "uid": userid,  # Ensure document key
+            "name": name,
+            "work_experience": work_experience,
+            "education": education,
+            "bio": bio
+        }
+
+        if profile_pic:
+            profile_pic_path = save_profile_picture(profile_pic, userid)
+            if profile_pic_path:
+                update_data["profile_pic"] = profile_pic_path
+            print(profile_pic_path)
+
+        if client_data:
+            profile_collection.update_one({"uid": userid}, {"$set": update_data})
+        else:
+            profile_collection.insert_one(update_data)
+        print(client_data)
+        return redirect(url_for("client_profile", userid=userid))
+    client_data = profile_collection.find_one({"uid": userid})
+    return render_template("client/profile.html", client=client_data, userid=userid)
+
+
 
 @app.route("/logout")
 def logout():

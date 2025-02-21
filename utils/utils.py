@@ -1,3 +1,7 @@
+import os
+from werkzeug.utils import secure_filename
+
+
 def convert_lists_to_html(content):
     lines = content.split('\n')
     html_lines = []
@@ -22,5 +26,21 @@ def convert_lists_to_html(content):
 
     if in_list:
         html_lines.append('</ul>' if lines[-1].strip().startswith('- ') else '</ol>')
-
     return '<br>'.join(html_lines)
+
+
+UPLOAD_FOLDER = "client_uploads"
+
+def save_profile_picture(profile_pic, userid):
+    user_dir = os.path.join(UPLOAD_FOLDER, "client_"+userid, "pfp")
+    os.makedirs(user_dir, exist_ok=True)
+    filename = secure_filename(profile_pic.filename)
+    file_ext = os.path.splitext(filename)[1].lower()
+    if file_ext not in [".jpg", ".jpeg", ".png"]:
+        return None  
+
+    save_path = os.path.join(user_dir, f"profile{file_ext}")
+    profile_pic.save(save_path)
+
+    return save_path  
+
