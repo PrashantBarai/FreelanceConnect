@@ -3,6 +3,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from pymongo import MongoClient
 import bcrypt
 from werkzeug.utils import secure_filename
+import base64
+
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key_here"
@@ -11,6 +13,7 @@ client = MongoClient("mongodb://localhost:27017/")
 db = client["freelanceconnect"]
 users_collection = db["users"]
 posts_collection = db["posts"]
+file_collection = db['files']
 
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "txt"}
@@ -80,6 +83,7 @@ def home():
 
 
 
+
 @app.route("/home/posts", methods=["GET", "POST"])
 def posts():
     print("Request method:", request.method)  # Debugging
@@ -87,32 +91,39 @@ def posts():
         if request.method == "POST":
             print("Form submitted!")  # Debugging
             title = request.form.get("title")
-            description = request.form.get("description")
-            document = request.files.get("document")
+            content = request.form.get("description")
+            documents = request.files.getlist("document")  # Handle multiple files
 
-            print("Title:", title)  # Debugging
-            print("Description:", description)  # Debugging
-            print("Document:", document.filename if document else "No document")  # Debugging
+            print("Title:", title)  
+            print("Content:", content)  
+            print("Documents:", [doc.filename for doc in documents] if documents else "No document")  
 
-            if not title or not description:
-                print("Missing fields!")  # Debugging
-                return "Missing title or description", 400
-
+            if not title or not content:
+                print("Missing fields!")  
+                return "Missing title or content", 400
             post_data = {
-                "client_id": session["userid"],
-                "title": title,
-                "description": description
+                "Title": title,
+                "Content": content,
+                "Multimedia": [],  # Store file document IDs
+                "Comments": [],  
+                "UID": session["userid"], 
+                "user_type": session['user_type'] 
             }
-            if document:
-                filename = document.filename
-                document.save(f"uploads/{filename}") 
-                post_data["document"] = filename
+            if documents:
+                for doc in documents:
+                    file_data = {
+                        "filename": doc.filename,
+                        "content_type": doc.content_type,
+                        "file_base64": base64.b64encode(doc.read()).decode('utf-8')  # Encode file to Base64
+                    }
+                    file_id = file_collection.insert_one(file_data).inserted_id
+                    post_data["Multimedia"].append(str(file_id))  # Store file _id as string
 
             posts_collection.insert_one(post_data)
-            print("Post stored in collection!")  # Debugging
+            print("Post stored in collection!")  
             return redirect(url_for("home"))
 
-        return render_template("client_dashboard.html")  # Ensure this template exists
+        return render_template("client_dashboard.html")  
     return redirect(url_for("login"))
 
 
