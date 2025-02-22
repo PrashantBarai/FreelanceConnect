@@ -38,6 +38,11 @@ from flask import send_from_directory
 def uploaded_file(filename):
     return send_from_directory("client_uploads", filename)
 
+# @app.route("/home/profile/<uid>")
+# def access_profile(uid):
+#     return redirect(url_for("client_profile", userid=uid))
+
+
 @app.route("/auth/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
@@ -55,7 +60,7 @@ def signup():
             "username": username,
             "email": email,
             "hashed_password": hashed_pw,
-            "user_type": user_type
+            "user_type": user_type,
         })
         return redirect(url_for("login"))
     return render_template("signup.html")
@@ -188,9 +193,12 @@ def my_posts():
 def client_profile(userid):
     if "userid" not in session:
         return redirect(url_for("login"))
+    if session['userid'] != userid:
+        return redirect(url_for(client_profile(userid=userid)))
 
     client_data = profile_collection.find_one({"_id": userid})
     print(userid)
+    
     if request.method == "POST":
         profile_pic = request.files.get("profile_pic")
         name = request.form.get("name")
@@ -199,7 +207,7 @@ def client_profile(userid):
         bio = request.form.get("bio")
 
         update_data = {
-            "uid": userid,  # Ensure document key
+            "_id": userid,  # Ensure correct document key
             "name": name,
             "work_experience": work_experience,
             "education": education,
@@ -213,25 +221,32 @@ def client_profile(userid):
             print(profile_pic_path)
 
         if client_data:
-            profile_collection.update_one({"uid": userid}, {"$set": update_data})
+            profile_collection.update_one({"_id": userid}, {"$set": update_data})
         else:
             profile_collection.insert_one(update_data)
-        print(client_data)
+            curruser = users_collection.find_one({"_id":userid})
+            curruser["profile_url"] = "localhost:5000/home/profile/"+userid
+
         return redirect(url_for("client_profile", userid=userid))
+
     client_data = profile_collection.find_one({"uid": userid})
     return render_template("client/profile.html", client=client_data, userid=userid)
 
 
+
 FREE_UPLOAD_FOLDER = "freelance_uploads"
+from flask import Flask, request, redirect, url_for, render_template, jsonify
+from werkzeug.utils import secure_filename
+import os
+from bson import json_util
+
 @app.route("/home/freelanceposts", methods=["GET", "POST"])
 def freelance_posts():
     print("Request method:", request.method)
     
-
     if "userid" in session and session["user_type"].lower() == "freelancer":
         if request.method == "POST":
-            print("Form submitted!")
-            print(request.form)
+            
             title = request.form.get("title")
             description = request.form.get("description")
             category = request.form.get("category")
@@ -241,15 +256,15 @@ def freelance_posts():
             skills_required = request.form.get("skills_required")
             documents = request.files.getlist("documents")
 
-            # Debugging prints
-            print(f"Title: {title}, Description: {description}, Category: {category}, Location: {location}")
-            print(f"Budget: {budget}, Delivery Time: {delivery_time}, Skills: {skills_required}")
-            print("Documents:", [doc.filename for doc in documents] if documents else "No document")
+            # # Debugging prints
+            # print(f"Title: {title}, Description: {description}, Category: {category}, Location: {location}")
+            # print(f"Budget: {budget}, Delivery Time: {delivery_time}, Skills: {skills_required}")
+            # print("Documents:", [doc.filename for doc in documents] if documents else "No document")
 
-            # Validation
-            if not title or not description or not category or not delivery_time:
-                print("Missing required fields!")
-                return "Missing required fields", 400
+            # # Validation
+            # if not title or not description or not category or not delivery_time:
+            #     print("Missing required fields!")
+            #     return "Missing required fields", 400
 
             # Post data dictionary
             post_data = {
@@ -285,11 +300,135 @@ def freelance_posts():
             posts_collection.update_one({"_id": inserted_post.inserted_id}, {"$set": post_data})
             print("Post stored in collection!")
             return redirect(url_for("home"))
-        return render_template("freelancer/freelancer_dashboard.html")
+
+       
+        posts = list(posts_collection.find({}))  # Show all posts
+
+        return render_template("freelancer/freelancer_dashboard.html", posts=posts)
+   
     return redirect(url_for("login"))
 
+@app.route("/home/clients")
+def client_chatroom():
+    if "userid" not in session:
+        return redirect(url_for("login"))
+    clients = users_collection.find({"user_type": "client"}) 
+    return render_template("freelancer/clients.html", clients=clients)
 
 
+@app.route("/home/chatroom")
+def home_clients():
+    if "userid" not in session:
+        return redirect(url_for("login"))
+    user = users_collection.find_one({"_id": ObjectId(session["userid"])})
+    if user and "chatrooms" in user:
+        chatrooms = user["chatrooms"]
+    else:
+        chatrooms = []
+
+    return render_template("client/chatroom.html", chatrooms=chatrooms)
+
+
+
+from flask import Flask, render_template, session, request, redirect, url_for
+from flask_socketio import SocketIO, send, emit, join_room, leave_room
+from bson import ObjectId
+from datetime import datetime
+from pymongo import MongoClient
+
+socketio = SocketIO(app)
+
+
+chatroom_collection = db['chatroom']
+
+@app.route("/start_chat", methods=["POST"])
+def start_chat():
+    if "userid" in session:
+        freelancer_id = session["userid"]  # ID of the freelancer
+        client_id = request.form.get("other_user_id")  # ID of the client
+        room_id = str(ObjectId())  # Generate a unique room ID
+
+        session["room_id"] = room_id
+        session["other_user_id"] = client_id
+        users_collection.update_one(
+            {"_id": ObjectId(freelancer_id)},
+            {"$addToSet": {"chatrooms": room_id}}  
+        )
+        users_collection.update_one(
+            {"_id": ObjectId(client_id)},
+            {"$addToSet": {"chatrooms": room_id}}  
+        )
+
+        # Initialize the chatroom in the collection
+        chatroom_collection.insert_one({
+            "room_id": room_id,
+            "client_id": client_id,
+            "freelancer_id": freelancer_id,
+            "client_msg": [],
+            "freelancer_msg": []
+        })
+
+        return redirect(url_for("chat", room_id=room_id))
+    return redirect(url_for("login"))
+
+@app.route("/chat/<room_id>")
+def chat(room_id):
+    if "userid" in session:
+        session["room_id"] = room_id
+        return render_template("chat.html", room_id=room_id)
+    return redirect(url_for("login"))
+
+@socketio.on("join")
+def handle_join(data):
+    room = data["room"]
+    join_room(room)
+    send(f"{session.get('username')} has joined the chat.", to=room)
+
+@socketio.on("message")
+def handle_message(data):
+    room = data["room"]
+    message = data["message"]
+    sender = session.get("username")
+    timestamp = datetime.now().strftime("%H:%M")
+    
+    # Store message in the chatroom collection under the correct room
+    if room:
+        chatroom = chatroom_collection.find_one({"room_id": room})
+        if chatroom:
+            if sender == session.get("username"):  # Check if message sender is the logged in user
+                if sender == chatroom["freelancer_id"]:
+                    # Save message to freelancer's message array
+                    chatroom_collection.update_one(
+                        {"room_id": room},
+                        {"$push": {"freelancer_msg": {"sender": sender, "message": message, "timestamp": timestamp}}}
+                    )
+                else:
+                    # Save message to client's message array
+                    chatroom_collection.update_one(
+                        {"room_id": room},
+                        {"$push": {"client_msg": {"sender": sender, "message": message, "timestamp": timestamp}}}
+                    )
+            else:
+                # Assuming the other user is the client
+                if sender == chatroom["freelancer_id"]:
+                    chatroom_collection.update_one(
+                        {"room_id": room},
+                        {"$push": {"freelancer_msg": {"sender": sender, "message": message, "timestamp": timestamp}}}
+                    )
+                else:
+                    chatroom_collection.update_one(
+                        {"room_id": room},
+                        {"$push": {"client_msg": {"sender": sender, "message": message, "timestamp": timestamp}}}
+                    )
+
+            # Emit message to the chatroom
+            emit("message", {"sender": sender, "message": message, "timestamp": timestamp}, to=room)
+
+@socketio.on("leave")
+def handle_leave(data):
+    room = data["room"]
+    leave_room(room)
+    send(f"{session.get('username')} has left the chat.", to=room)
 
 @app.route("/logout")
 def logout():
@@ -298,3 +437,4 @@ def logout():
 
 if __name__ == "__main__":
     app.run(debug=True)
+    socketio.run(app, debug=True)

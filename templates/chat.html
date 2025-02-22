@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room: {{ room_id }}</title>
+    <style>
+        #chat-box {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #message-input {
+            width: 80%;
+            padding: 10px;
+        }
+        #send-button {
+            width: 18%;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chat Room: {{ room_id }}</h1>
+    <div id="chat-box"></div>
+    <input type="text" id="message-input" placeholder="Type your message...">
+    <button id="send-button">Send</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        // Join the room
+        const room_id = "{{ room_id }}";
+        socket.emit("join", { room: room_id });
+
+        // Send message
+        document.getElementById("send-button").addEventListener("click", () => {
+            const message = document.getElementById("message-input").value;
+            if (message.trim()) {
+                socket.emit("message", { room: room_id, message: message });
+                document.getElementById("message-input").value = "";
+            }
+        });
+
+        // Receive message
+        socket.on("message", (data) => {
+            const chatBox = document.getElementById("chat-box");
+            const messageElement = document.createElement("div");
+            messageElement.textContent = `${data.sender} (${data.timestamp}): ${data.message}`;
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;  // Auto-scroll to the latest message
+        });
+    </script>
+</body>
+</html>

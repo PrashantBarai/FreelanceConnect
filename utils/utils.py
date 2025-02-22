@@ -3,7 +3,10 @@ from werkzeug.utils import secure_filename
 
 
 def convert_lists_to_html(content):
+    if not content:
+        return "" 
     lines = content.split('\n')
+        
     html_lines = []
     in_list = False
 

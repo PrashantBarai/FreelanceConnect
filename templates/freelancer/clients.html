@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clients</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 36px;
+        }
+
+        .client-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .client-item {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .client-info {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .client-actions button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .client-actions button:hover {
+            background-color: #2980b9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .client-actions {
+            text-align: right;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Clients</h1>
+    </header>
+
+    <div class="container">
+        <ul class="client-list">
+            {% for client in clients %}
+                <li class="client-item">
+                    <div class="client-info">
+                        <p>{{ client.username }} <br><small>{{ client.email }}</small></p>
+                    </div>
+                    <div class="client-actions">
+                        <form action="{{ url_for('start_chat') }}" method="POST">
+                            <input type="hidden" name="other_user_id" value="{{ client._id }}">
+                            <button type="submit">Start Chat</button>   
+                        </form>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+</body>
+</html>

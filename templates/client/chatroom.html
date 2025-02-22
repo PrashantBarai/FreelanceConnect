@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Rooms</title>
+    <style>
+        .chatroom-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .chatroom-item {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+            padding: 15px;
+        }
+        .chatroom-item a {
+            text-decoration: none;
+            color: #3498db;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Your Chat Rooms</h1>
+    <ul class="chatroom-list">
+        {% for room_id in chatrooms %}
+            <li class="chatroom-item">
+                <a href="{{ url_for('chat', room_id=room_id) }}">Chat Room: {{ room_id }}</a>
+            </li>
+        {% else %}
+            <li>No chat rooms available.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
