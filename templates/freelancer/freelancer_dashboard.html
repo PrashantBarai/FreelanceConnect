@@ -154,13 +154,15 @@
         }
 
         function toggleDetails(button) {
-            const postCard = button.closest('.job-card');
-            const fullText = postCard.querySelector('.full-text');
-            const showMoreBtn = postCard.querySelector('.show-more');
-
-            if (fullText) {
-                fullText.classList.toggle('hidden');
-                showMoreBtn.textContent = showMoreBtn.textContent === 'Show More' ? 'Show Less' : 'Show More';
+            let content = button.previousElementSibling.previousElementSibling; // The <p> element containing the content
+            if (content.classList.contains('truncate')) {
+                content.classList.remove('truncate');
+                content.style.maxHeight = 'none';
+                button.textContent = "Show Less";
+            } else {
+                content.classList.add('truncate');
+                content.style.maxHeight = '4.5rem';
+                button.textContent = "Show More";
             }
         }
 

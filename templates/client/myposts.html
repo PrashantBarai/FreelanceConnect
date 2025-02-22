@@ -24,22 +24,79 @@
         {% if posts %}
             <ul class="space-y-6">
                 {% for post in posts %}
-                    <div class="job-card bg-white p-6 rounded-lg shadow-md border border-gray-200 overflow-hidden" 
-                        data-title="{{ post.Title }}" data-budget="{{ post.Budget }}" data-location="{{ post.Location }}">
-                        <h3 class="text-2xl font-bold text-blue-600">{{ post.Title | safe }}</h3>
-                        <p class="mt-2 text-gray-700 truncate" style="max-height: 4.5rem; overflow: hidden;">{{ post.Content | safe }}</p>
+                    <div class="job-card bg-white p-6 rounded-lg shadow-md border border-gray-200 overflow-hidden"
+                        {% if post.Title %}data-title="{{ post.Title }}"{% endif %}
+                        {% if post.Budget %}data-budget="{{ post.Budget }}"{% endif %}
+                        {% if post.Location %}data-location="{{ post.Location }}"{% endif %}>
+                        
+                        {% if post.Title %}
+                            <h3 class="text-2xl font-bold text-blue-600">{{ post.Title | safe }}</h3>
+                        {% endif %}
+                
+                        {% if post.Content %}
+                            <p class="mt-2 text-gray-700 truncate" style="max-height: 4.5rem; overflow: hidden;">
+                                {{ post.Content | safe }}
+                            </p>
+                        {% endif %}
+                
                         <div class="flex justify-start items-center gap-6 mt-4 text-gray-600">
-                            <span class="font-semibold">Location:</span> <span>{{ post.Location | safe }}</span>
-                            <span class="font-semibold">Budget:</span> <span class="text-green-600 font-bold">${{ post.Budget | safe }}</span>
+                            {% if post.Location %}
+                                <span class="font-semibold">Location:</span> <span>{{ post.Location | safe }}</span>
+                            {% endif %}
+                            
+                            {% if post.Budget %}
+                                <span class="font-semibold">Budget:</span> 
+                                <span class="text-green-600 font-bold">${{ post.Budget | safe }}</span>
+                            {% endif %}
                         </div>
-                        <button class="show-more mt-4 text-blue-600 font-semibold" onclick="toggleDetails(this)">Show More</button>
-                        <button class="find-match mt-4 ml-4 px-4 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700">Find a Match</button>
+
+                        <!-- Buttons -->
+                        <div class="mt-4 flex gap-4">
+                            <button class="show-more text-blue-600 font-semibold" onclick="toggleDetails(this)">Show More</button>
+                            <button class="match-btn mt-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700"
+                                    data-postid="{{ post._id }}" onclick="matchPost(this)">Match Freelancers
+                            </button>
+                        </div>
                     </div>
                 {% endfor %}
             </ul>
         {% endif %}
     </main>
+    
     <script>
+        function matchPost(button) {
+            let postId = button.getAttribute("data-postid");
+    
+            fetch("/match", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ postid: postId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.matched_freelancers.length > 0) {
+                    let resultHTML = "<h3 class='text-lg font-bold mt-4'>Matched Freelancers:</h3><ul class='mt-2'>";
+                    data.matched_freelancers.forEach(freelancer => {
+                        resultHTML += `<li class='border p-2 rounded mt-1'>
+                                        <strong>${freelancer.name}</strong> - Skills: ${freelancer.skills.join(", ")}
+                                      </li>`;
+                    });
+                    resultHTML += "</ul>";
+                    button.parentElement.insertAdjacentHTML("beforeend", resultHTML);
+                } else {
+                    alert("No matching freelancers found.");
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        }
+
+
+
+
+
+        
         function applyFilters() {
             let searchQuery = document.getElementById('search').value.toLowerCase();
             let budgetFilter = document.getElementById('filterBudget').value;
@@ -73,6 +130,12 @@
                 button.textContent = "Show More";
             }
         }
+
+        function matchPost(title) {
+            alert("Matching with: " + title);
+            // You can add an AJAX call here to process the match
+        }
     </script>
+
 </body>
 </html>

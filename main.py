@@ -179,6 +179,46 @@ def posts():
 
 
 
+@app.route("/match", methods=["POST"])
+def match_post():
+    if "userid" not in session or session["user_type"].lower() != "client":
+        return jsonify({"message": "Unauthorized"}), 401
+
+    data = request.json
+    postid = data.get("postid")
+
+    if not postid:
+        return jsonify({"message": "Invalid request"}), 400
+    post = posts_collection.find_one({"_id": ObjectId(postid)})
+    if not post:
+        return jsonify({"message": "Post not found"}), 404
+
+    required_skills = post.get("required_skills", [])  
+    
+    matched_freelancers = users_collection.find({
+        "user_type": "freelancer",
+        "skills": {"$in": required_skills}  # Match at least one required skill
+    })
+
+    matched_freelancers_list = []
+    for freelancer in matched_freelancers:
+        matched_freelancers_list.append({
+            "freelancer_id": str(freelancer["_id"]),
+            "name": freelancer["name"],
+            "skills": freelancer["skills"]
+        })
+
+    # match_data = {
+    #     "post_id": ObjectId(postid),
+    #     "client_id": session["userid"],
+    #     "matched_freelancers": matched_freelancers_list
+    # }
+
+    return jsonify({"message": "Match request processed!", "matched_freelancers": matched_freelancers_list})
+
+
+
+
 @app.route("/home/myposts")
 def my_posts():
     if "userid" not in session or session["user_type"].lower() != "client":
