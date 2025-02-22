@@ -19,7 +19,9 @@ profile_collection = db['profile']
 
 UPLOAD_FOLDER = "client_uploads"
 ALLOWED_EXTENSIONS = {"pdf", "jpg", "png", "docx"}
+
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["FREE_UPLOAD_FOLDER"] = "freelance_uploads"
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -79,28 +81,48 @@ def login():
 
     return render_template("login.html")
 
-
 @app.route("/home", methods=["GET", "POST"])
 def home():
     if "userid" in session:
         user_type = session.get("user_type", "").lower()
+        
+        search_query = request.args.get("search", "").strip().lower()
+        min_budget = request.args.get("min_budget", "")
+        max_budget = request.args.get("max_budget", "")
+        location_filter = request.args.get("location", "").strip().lower()
+
+        filter_criteria = {}
+
+        if search_query:
+            filter_criteria["Title"] = {"$regex": search_query, "$options": "i"}  # Case-insensitive search
+        
+        if location_filter:
+            filter_criteria["Location"] = {"$regex": location_filter, "$options": "i"}
+        
+        if min_budget.isdigit():
+            filter_criteria["Budget"] = {"$gte": int(min_budget)}
+
+        if max_budget.isdigit():
+            if "Budget" in filter_criteria:
+                filter_criteria["Budget"]["$lte"] = int(max_budget)
+            else:
+                filter_criteria["Budget"] = {"$lte": int(max_budget)}
+
+        posts = list(posts_collection.find(filter_criteria))
+
+        for post in posts:
+            post["_id"] = str(post["_id"])
+            post["Content"] = convert_lists_to_html(post["Content"])
+
         if user_type == "client":
-            posts = list(posts_collection.find({}))
-            
-            for post in posts:
-                post["_id"] = str(post["_id"])
-                post["Content"] = convert_lists_to_html(post["Content"])
-            print(posts)  
             return render_template("client/client_dashboard.html", posts=posts)
         elif user_type == "freelancer":
-            posts = list(posts_collection.find({}))
-            
-            for post in posts:
-                post["_id"] = str(post["_id"])
-                post["Content"] = convert_lists_to_html(post["Content"])
-            return render_template("freelancer/freelancer_dashboard.html",posts=posts)
+            return render_template("freelancer/freelancer_dashboard.html", posts=posts)
+        
         return redirect(url_for("login"))
+    
     return redirect(url_for("login"))
+
 
 
 
@@ -114,45 +136,41 @@ def posts():
 
             title = request.form.get("title")
             content = request.form.get("description")
+            location = request.form.get("location")
+            budget = request.form.get("budget")
             documents = request.files.getlist("document")
 
             print("Title:", title)
             print("Content:", content)
             print("Documents:", [doc.filename for doc in documents] if documents else "No document")
-
             if not title or not content:
                 print("Missing fields!")
                 return "Missing title or content", 400
-
             post_data = {
                 "Title": title,
                 "Content": content,
+                "Location":location,
+                "Budget": budget,
                 "Multimedia": [],
                 "Comments": [],
                 "UID": session["userid"],
                 "user_type": session["user_type"]
             }
-
             inserted_post = posts_collection.insert_one(post_data)
             post_id = str(inserted_post.inserted_id)  
             user_folder = os.path.join(app.config["UPLOAD_FOLDER"], f"client_{session['userid']}")
             post_folder = os.path.join(user_folder, "posts", post_id, "multimedia")
-
             os.makedirs(post_folder, exist_ok=True)  
             for doc in documents:
                 if doc and allowed_file(doc.filename):
                     filename = secure_filename(doc.filename)
                     file_path = os.path.join(post_folder, filename)
                     doc.save(file_path)
-                    post_data["Multimedia"].append(file_path)  # Store file path
-
+                    post_data["Multimedia"].append(file_path)  
             posts_collection.update_one({"_id": inserted_post.inserted_id}, {"$set": post_data})
-
             print("Post stored in collection!")
             return redirect(url_for("home"))
-
         return render_template("client/client_dashboard.html")
-
     return redirect(url_for("login"))
 
 
@@ -163,13 +181,12 @@ def my_posts():
         return redirect(url_for("login"))
     client_id = session["userid"]
     posts = list(posts_collection.find({"UID": client_id}))
-
     return render_template("client/myposts.html", posts=posts)
 
 
 @app.route("/home/profile/<userid>", methods=["GET", "POST"])
 def client_profile(userid):
-    if "userid" not in session or session["user_type"].lower() != "client" or session["userid"] != userid:
+    if "userid" not in session:
         return redirect(url_for("login"))
 
     client_data = profile_collection.find_one({"_id": userid})
@@ -203,6 +220,74 @@ def client_profile(userid):
         return redirect(url_for("client_profile", userid=userid))
     client_data = profile_collection.find_one({"uid": userid})
     return render_template("client/profile.html", client=client_data, userid=userid)
+
+
+FREE_UPLOAD_FOLDER = "freelance_uploads"
+@app.route("/home/freelanceposts", methods=["GET", "POST"])
+def freelance_posts():
+    print("Request method:", request.method)
+    
+
+    if "userid" in session and session["user_type"].lower() == "freelancer":
+        if request.method == "POST":
+            print("Form submitted!")
+            print(request.form)
+            title = request.form.get("title")
+            description = request.form.get("description")
+            category = request.form.get("category")
+            location = request.form.get("location")
+            budget = request.form.get("budget")
+            delivery_time = request.form.get("delivery_time")
+            skills_required = request.form.get("skills_required")
+            documents = request.files.getlist("documents")
+
+            # Debugging prints
+            print(f"Title: {title}, Description: {description}, Category: {category}, Location: {location}")
+            print(f"Budget: {budget}, Delivery Time: {delivery_time}, Skills: {skills_required}")
+            print("Documents:", [doc.filename for doc in documents] if documents else "No document")
+
+            # Validation
+            if not title or not description or not category or not delivery_time:
+                print("Missing required fields!")
+                return "Missing required fields", 400
+
+            # Post data dictionary
+            post_data = {
+                "Title": title,
+                "Content": description,
+                "Category": category,
+                "Location": location,
+                "Budget": budget,
+                "Delivery_time": delivery_time,
+                "Skills_required": skills_required.split(",") if skills_required else [],
+                "Multimedia": [],
+                "Comments": [],
+                "UID": session["userid"],
+                "user_type": session["user_type"]
+            }
+
+            # Insert post into the collection
+            inserted_post = posts_collection.insert_one(post_data)
+            post_id = str(inserted_post.inserted_id)
+
+            # Create directories
+            user_folder = os.path.join(app.config["FREE_UPLOAD_FOLDER"], f"freelancer_{session['userid']}")
+            post_folder = os.path.join(user_folder, "posts", post_id, "multimedia")
+            os.makedirs(post_folder, exist_ok=True)
+
+            # Handle file uploads
+            for doc in documents:
+                if doc and allowed_file(doc.filename):
+                    filename = secure_filename(doc.filename)
+                    file_path = os.path.join(post_folder, filename)
+                    doc.save(file_path)
+                    post_data["Multimedia"].append(filename)  
+            posts_collection.update_one({"_id": inserted_post.inserted_id}, {"$set": post_data})
+            print("Post stored in collection!")
+            return redirect(url_for("home"))
+        return render_template("freelancer/freelancer_dashboard.html")
+    return redirect(url_for("login"))
+
 
 
 
