@@ -17,7 +17,7 @@
             <div class="flex space-x-6">
                 <a href="/home" class="text-gray-700 hover:text-blue-600">Dashboard</a>
                 <a href="/home/myposts" class="text-gray-700 hover:text-blue-600">My Posts</a> 
-                <a href="/home/profile/{{ session['userid'] }}" class="text-gray-700 hover:text-blue-600">Profile</a>
+                <a href="/home/profile/client/{{ session['userid'] }}" class="text-gray-700 hover:text-blue-600">Profile</a>
                 <a href="/home/chatroom" class="text-gray-700 hover:text-blue-600">Chatroom</a>
                 <a href="/logout" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Logout</a>
             </div>
@@ -59,17 +59,36 @@
         <div id="jobList" class="space-y-6">
             {% if posts %}
                 {% for post in posts %}
-                    <div class="job-card bg-white p-6 rounded-lg shadow-md border border-gray-200 overflow-hidden" 
-                         data-title="{{ post.Title }}" data-budget="{{ post.Budget }}" data-location="{{ post.Location }}">
-                        <h3 class="text-2xl font-bold text-blue-600">{{ post.Title | safe }}</h3>
-                        <p class="mt-2 text-gray-700 truncate" style="max-height: 4.5rem; overflow: hidden;">{{ post.Content | safe }}</p>
+                    <div class="job-card bg-white p-6 rounded-lg shadow-md border border-gray-200 overflow-hidden"
+                        {% if post.Title %}data-title="{{ post.Title }}"{% endif %}
+                        {% if post.Budget %}data-budget="{{ post.Budget }}"{% endif %}
+                        {% if post.Location %}data-location="{{ post.Location }}"{% endif %}>
+                        
+                        {% if post.Title %}
+                            <h3 class="text-2xl font-bold text-blue-600">{{ post.Title | safe }}</h3>
+                        {% endif %}
+                
+                        {% if post.Content %}
+                            <p class="mt-2 text-gray-700 truncate" style="max-height: 4.5rem; overflow: hidden;">
+                                {{ post.Content | safe }}
+                            </p>
+                        {% endif %}
+                
                         <div class="flex justify-start items-center gap-6 mt-4 text-gray-600">
-                            <span class="font-semibold">Location:</span> <span>{{ post.Location | safe }}</span>
-                            <span class="font-semibold">Budget:</span> <span class="text-green-600 font-bold">${{ post.Budget | safe }}</span>
+                            {% if post.Location %}
+                                <span class="font-semibold">Location:</span> <span>{{ post.Location | safe }}</span>
+                            {% endif %}
+                            
+                            {% if post.Budget %}
+                                <span class="font-semibold">Budget:</span> 
+                                <span class="text-green-600 font-bold">${{ post.Budget | safe }}</span>
+                            {% endif %}
                         </div>
+                
                         <button class="show-more mt-4 text-blue-600 font-semibold" onclick="toggleDetails(this)">Show More</button>
                     </div>
                 {% endfor %}
+            
             {% else %}
                 <p class="text-gray-700">No job postings available.</p>
             {% endif %}

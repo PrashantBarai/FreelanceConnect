@@ -15,7 +15,7 @@ users_collection = db["users"]
 posts_collection = db["posts"]
 file_collection = db['files']
 profile_collection = db['profile']
-
+reviews_collection = db['reviews']
 
 UPLOAD_FOLDER = "client_uploads"
 ALLOWED_EXTENSIONS = {"pdf", "jpg", "png", "docx"}
@@ -90,7 +90,6 @@ def login():
 def home():
     if "userid" in session:
         user_type = session.get("user_type", "").lower()
-        
         search_query = request.args.get("search", "").strip().lower()
         min_budget = request.args.get("min_budget", "")
         max_budget = request.args.get("max_budget", "")
@@ -189,14 +188,17 @@ def my_posts():
     return render_template("client/myposts.html", posts=posts)
 
 
-@app.route("/home/profile/<userid>", methods=["GET", "POST"])
+
+
+@app.route("/home/profile/client/<userid>", methods=["GET", "POST"])
 def client_profile(userid):
     if "userid" not in session:
         return redirect(url_for("login"))
+    
     if session['userid'] != userid:
-        return redirect(url_for(client_profile(userid=userid)))
+        return redirect(url_for("client_profile", userid=session['userid'])) 
 
-    client_data = profile_collection.find_one({"_id": userid})
+    client_data = profile_collection.find_one({"uid": userid})
     print(userid)
     
     if request.method == "POST":
@@ -207,7 +209,7 @@ def client_profile(userid):
         bio = request.form.get("bio")
 
         update_data = {
-            "_id": userid,  # Ensure correct document key
+            "uid": userid,  # Ensure correct document key
             "name": name,
             "work_experience": work_experience,
             "education": education,
@@ -217,20 +219,111 @@ def client_profile(userid):
         if profile_pic:
             profile_pic_path = save_profile_picture(profile_pic, userid)
             if profile_pic_path:
-                update_data["profile_pic"] = profile_pic_path
-            print(profile_pic_path)
+                update_data["profile_pic"] = profile_pic_path  # Store the path
+
 
         if client_data:
-            profile_collection.update_one({"_id": userid}, {"$set": update_data})
+            profile_collection.update_one({"uid": userid}, {"$set": update_data})
         else:
             profile_collection.insert_one(update_data)
-            curruser = users_collection.find_one({"_id":userid})
-            curruser["profile_url"] = "localhost:5000/home/profile/"+userid
+            curruser = users_collection.find_one({"uid": userid})
+            curruser["profile_url"] = "localhost:5000/home/profile/client/" + userid
 
         return redirect(url_for("client_profile", userid=userid))
 
     client_data = profile_collection.find_one({"uid": userid})
     return render_template("client/profile.html", client=client_data, userid=userid)
+
+
+@app.route("/home/profile/freelance/<userid>/add_review", methods=["POST"])
+def add_review(userid):
+    if "userid" not in session:
+        return redirect(url_for("login"))
+
+    rating = request.form.get("rating")
+    review_text = request.form.get("review")
+
+    if rating and review_text:
+        review_data = {
+            "uid": userid,
+            "rating": rating,
+            "review": review_text,
+        }
+        reviews_collection.insert_one(review_data)
+
+    return redirect(url_for("freelancer_profile", userid=userid))
+
+import os
+import glob
+
+@app.route("/home/profile/freelance/<userid>", methods=["GET", "POST"])
+def freelancer_profile(userid):
+    if "userid" not in session:
+        return redirect(url_for("login"))
+    
+    if session['userid'] != userid:
+        return redirect(url_for("freelancer_profile", userid=session['userid']))  
+    
+    client_data = profile_collection.find_one({"uid": userid})
+    print(userid)
+
+    if request.method == "POST":
+        profile_pic = request.files.get("profile_pic")
+        resume = request.files.get("resume")  # Get resume file
+        name = request.form.get("name")
+        work_experience = request.form.get("work_experience")
+        education = request.form.get("education")
+        bio = request.form.get("bio")
+        hobbies = request.form.get("hobbies")
+
+        update_data = {
+            "uid": userid,
+            "name": name,
+            "work_experience": work_experience,
+            "education": education,
+            "bio": bio,
+            "hobbies": hobbies
+        }
+
+        if profile_pic:
+            profile_pic_path = save_profile_picture(profile_pic, userid)
+            if profile_pic_path:
+                update_data["profile_pic"] = profile_pic_path
+
+        # Handle Resume File
+        upload_dir = f"freelance_uploads/{userid}"
+        os.makedirs(upload_dir, exist_ok=True)
+
+        files = glob.glob(os.path.join(upload_dir, '*'))
+        for file in files:
+            if os.path.isfile(file):
+                os.remove(file)
+
+        if resume:
+            resume_path = os.path.join(upload_dir, resume.filename)
+            resume.save(resume_path)
+            update_data["resume"] = resume_path
+
+        print(f"Profile picture path: {profile_pic_path if profile_pic else 'No change'}")
+        print(f"Resume saved at: {resume_path if resume else 'No change'}")
+
+        # Update or insert profile data
+        if client_data:
+            profile_collection.update_one({"uid": userid}, {"$set": update_data})
+        else:
+            profile_collection.insert_one(update_data)
+            curruser = users_collection.find_one({"uid": userid})
+            if curruser:
+                users_collection.update_one(
+                    {"uid": userid},
+                    {"$set": {"profile_url": f"localhost:5000/home/profile/freelance/{userid}"}}
+                )
+
+        return redirect(url_for("freelancer_profile", userid=userid))  
+
+    client_data = profile_collection.find_one({"uid": userid})
+    return render_template("freelancer/profile.html", client=client_data, userid=userid)
+
 
 
 
