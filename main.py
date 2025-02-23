@@ -202,7 +202,10 @@ import PyPDF2
 import requests
 load_dotenv(override=True)
 
-# Groq API configuration
+# 
+from flask_cors import CORS
+CORS(app, resources={r"/analyze": {"origins": "*"}})
+
 API_KEY = os.getenv("GROQ_TOKEN")  # Ensure this is correctly set
 BASE_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -297,39 +300,51 @@ def match_post():
     if not postid:
         return jsonify({"message": "Invalid request"}), 400
 
-    clientpost = posts_collection.find_one({"_id": ObjectId(postid),"user_type":"client"})
+    # Fetch client post
+    clientpost = posts_collection.find_one({"_id": ObjectId(postid), "user_type": "client"})
     if not clientpost:
         return jsonify({"message": "Post not found"}), 404
 
-    required_skills = [skill.strip().lower() for skill in clientpost.get("Skills", [])]
-    print(required_skills)
+    required_skills = set(skill.strip().lower() for skill in clientpost.get("Skills", []))
+    if not required_skills:
+        return jsonify({"message": "No required skills found"}), 400
+
+    print(f"Required Skills: {required_skills}")
+
     freelance_posts = list(posts_collection.find({"user_type": "freelancer"}))
 
     matched_freelancers_list = []
-    percent = 0
+    total_match_percentages = []
+
+    seen_freelancers = set()  # To prevent duplicates
+
     for fpost in freelance_posts:
-        freelancer_skills = [skill.strip().lower() for skill in fpost.get("Skills_required", [])]
-        matched_skills = set(freelancer_skills) & set(required_skills)
-        percent = len(matched_skills)/len(required_skills)
-        print(freelancer_skills)
-        print(matched_skills)
+        freelancer_skills = set(skill.strip().lower() for skill in fpost.get("Skills_required", []))
+        matched_skills = freelancer_skills & required_skills
+
         if matched_skills:
-            freelancer_post = posts_collection.find_one({"_id": ObjectId(fpost["_id"]), "user_type": "freelancer"})
-            if freelancer_post:
-                # Fetch the freelancer's details from the users_collection
-                freelancer = users_collection.find_one({"_id": ObjectId(fpost["UID"])})
+            freelancer_id = str(fpost["UID"])
+
+            if freelancer_id not in seen_freelancers:  # Prevent duplicates
+                seen_freelancers.add(freelancer_id)
+                match_percent = round((len(matched_skills) / len(required_skills)) * 100, 2)
+                total_match_percentages.append(match_percent)
+
+                freelancer = users_collection.find_one({"_id": ObjectId(freelancer_id)})
                 if freelancer:
                     matched_freelancers_list.append({
-                        "freelancer_id": str(freelancer["_id"]),
-                        "name": freelancer.get("username", "Unknown"), 
-                        "email": freelancer.get("email","None"),
-                        "skills": freelancer.get("Skills_required", [])  # Use .get() to avoid KeyError
+                        "freelancer_id": freelancer_id,
+                        "name": freelancer.get("username", "Unknown"),
+                        "email": freelancer.get("email", "None"),
+                        "skills": list(freelancer_skills),
+                        "match_percent": match_percent  # Include percentage
                     })
-    # Fetch all posts for the client
-    client_posts = list(posts_collection.find({"UID": session["userid"]}))
-    print(matched_freelancers_list)
-    return jsonify({"matched_freelancers": matched_freelancers_list,"percent":percent})
 
+    avg_match_percent = round(sum(total_match_percentages) / len(total_match_percentages), 2) if total_match_percentages else 0
+
+    print(f"Matched Freelancers: {matched_freelancers_list}")
+
+    return jsonify({"matched_freelancers": matched_freelancers_list, "avg_match_percent": avg_match_percent})
 
 
 @app.route("/home/myposts")
