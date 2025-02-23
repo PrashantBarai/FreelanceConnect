@@ -152,7 +152,6 @@
             <h1 class="text-xl font-bold">Freelancer Hub</h1>
             <ul class="flex gap-6">
                 <li><a href="/home" class="hover:underline">Home</a></li>
-                <!-- <li><a href="#" class="hover:underline"></a></li> -->
                 <li><a href="/logout" class="hover:underline">Logout</a></li>
             </ul>
         </div>
@@ -164,7 +163,7 @@
             <div>
                 <label class="form-label">Profile Picture</label>
                 {% if client and client.profile_pic %}
-                    <img src=".././../{{ client.profile_pic }}" alt="Profile Picture" class="profile-image" id="profile-picture">
+                    <img src="../../uploads/{{ client.profile_pic }}" alt="Profile Picture" class="profile-image" id="profile-picture">
                 {% else %}
                     <img src="default-profile-pic.jpg" alt="Profile Picture" class="profile-image" id="profile-picture">
                 {% endif %}

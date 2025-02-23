@@ -152,7 +152,6 @@
             <h1 class="text-xl font-bold">Freelancer Hub</h1>
             <ul class="flex gap-6">
                 <li><a href="/home" class="hover:underline">Home</a></li>
-                <!-- <li><a href="#" class="hover:underline"></a></li> -->
                 <li><a href="/logout" class="hover:underline">Logout</a></li>
             </ul>
         </div>
@@ -161,14 +160,32 @@
         <h2 class="profile-header">{{client.name}}</h2>
         <form action="{{ url_for('client_profile', userid=userid) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
             
+            <!-- Profile Picture -->
             <div>
                 <label class="form-label">Profile Picture</label>
                 {% if client and client.profile_pic %}
-                    <img src=".././.././{{ client.profile_pic }}" alt="Profile Picture" class="profile-image" id="profile-picture">
+                    <img src=".././../{{ client.profile_pic }}" alt="Profile Picture" class="profile-image" id="profile-picture">
                 {% else %}
                     <img src="default-profile-pic.jpg" alt="Profile Picture" class="profile-image" id="profile-picture">
                 {% endif %}
                 <input type="file" name="profile_pic" accept="image/*" class="form-input mt-2">
+            </div>
+            
+            <!-- Resume -->
+            <div class="info-card">
+                <div class="info-header">
+                    <span class="icon">📄</span>
+                    <p>Resume</p>
+                    <button type="button" class="edit-btn" onclick="editField('resume')">Edit</button>
+                </div>
+                <div class="info-content" id="resume-content">
+                    {% if client and client.resume %}
+                        <a href=".././../{{ client.resume }}" target="_blank" class="text-blue-500 hover:underline">Download Resume</a>
+                    {% else %}
+                        <p class="no-picture">No resume uploaded</p>
+                    {% endif %}
+                </div>
+                <input type="file" name="resume" accept=".pdf,.doc,.docx" class="form-input editable" id="resume-input">
             </div>
             
             <!-- Name -->
@@ -213,6 +230,17 @@
                 </div>
                 <div class="info-content" id="bio-content">{{ client.bio if client else 'Not provided' }}</div>
                 <textarea name="bio" rows="3" class="form-textarea editable" id="bio-input">{{ client.bio if client else '' }}</textarea>
+            </div>
+            
+            <!-- Description -->
+            <div class="info-card">
+                <div class="info-header">
+                    <span class="icon">📋</span>
+                    <p>Description</p>
+                    <button type="button" class="edit-btn" onclick="editField('description')">Edit</button>
+                </div>
+                <div class="info-content" id="description-content">{{ client.description if client else 'Not provided' }}</div>
+                <textarea name="description" rows="3" class="form-textarea editable" id="description-input">{{ client.description if client else '' }}</textarea>
             </div>
             
             <!-- Submit Button -->

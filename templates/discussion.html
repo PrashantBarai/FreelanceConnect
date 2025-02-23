@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discussion Forum</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-blue-600 p-4 text-white">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="#" class="text-xl font-bold">Freelancer Hub</a>
+            <ul class="flex space-x-4">
+                <li><a href="#" class="hover:underline">Home</a></li>
+                <li><a href="#" class="hover:underline">Projects</a></li>
+                <li><a href="#" class="hover:underline">Forum</a></li>
+                <li><a href="#" class="hover:underline">Profile</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Discussion Forum -->
+    <div class="container mx-auto mt-6 p-4 bg-white shadow-lg rounded-lg">
+        <h2 class="text-2xl font-bold mb-4">Discussion Forum</h2>
+        
+        <!-- New Post Form (Initially Hidden) -->
+        <div id="postForm" class="mb-4 hidden">
+            <input id="postTitle" type="text" class="w-full p-2 border rounded mb-2" placeholder="Title">
+            <textarea id="postContent" class="w-full p-2 border rounded" placeholder="Share your thoughts..."></textarea>
+            <button onclick="addPost()" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded">Post</button>
+            <button onclick="toggleForm()" class="mt-2 bg-gray-500 text-white px-4 py-2 rounded">Cancel</button>
+        </div>
+        
+        <!-- Posts Section -->
+        <div id="posts" class="space-y-4">
+            <!-- Posts will be added here dynamically -->
+        </div>
+    </div>
+
+    <!-- Floating Post Button -->
+    <button onclick="toggleForm()" class="fixed bottom-6 right-6 bg-blue-600 text-white px-6 py-3 rounded-full shadow-lg">Post</button>
+
+    <script>
+        function toggleForm() {
+            let form = document.getElementById("postForm");
+            form.classList.toggle("hidden");
+        }
+
+        function addPost() {
+            let title = document.getElementById("postTitle").value;
+            let content = document.getElementById("postContent").value;
+            if (title.trim() === "" || content.trim() === "") return;
+            
+            let postContainer = document.createElement("div");
+            postContainer.className = "p-4 bg-gray-100 rounded-lg";
+            postContainer.innerHTML = `
+                <h3 class="text-xl font-bold">${title}</h3>
+                <p class="text-gray-800">${content}</p>
+                <span class="text-sm text-gray-500">Just now</span>
+            `;
+            
+            document.getElementById("posts").prepend(postContainer);
+            document.getElementById("postTitle").value = "";
+            document.getElementById("postContent").value = "";
+            toggleForm();
+        }
+    </script>
+</body>
+</html>

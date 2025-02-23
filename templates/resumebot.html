@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResumeBot - Resume Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: left;
+            max-height: 200px; /* Set max height */
+            overflow-y: auto; /* Scrollable content */
+            word-wrap: break-word; /* Prevent text overflow */
+            white-space: pre-line; /* Preserve line breaks */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ResumeBot</h1>
+        <p>Upload your resume and enter job requirements to get personalized recommendations.</p>
+        
+        <!-- File Upload -->
+        <input type="file" id="resume" accept=".pdf">
+        
+        <!-- Job Requirements Input -->
+        <textarea id="jobRequirements" placeholder="Enter job requirements..."></textarea>
+        
+        <!-- Submit Button -->
+        <button onclick="analyzeResume()">Analyze Resume</button>
+        
+        <!-- Result Display -->
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        async function analyzeResume() {
+            const resumeFile = document.getElementById("resume").files[0];
+            const jobRequirements = document.getElementById("jobRequirements").value;
+            const resultDiv = document.getElementById("result");
+
+            if (!resumeFile || !jobRequirements) {
+                resultDiv.innerHTML = "<p style='color: red;'>Please upload a resume and enter job requirements.</p>";
+                return;
+            }
+
+            // Create a FormData object
+            const formData = new FormData();
+            formData.append("resume", resumeFile);
+            formData.append("job_requirements", jobRequirements);
+
+            // Show loading message
+            resultDiv.innerHTML = "<p>Analyzing your resume... Please wait.</p>";
+
+            try {
+                // Send the request to the Flask API
+                const response = await fetch("http://127.0.0.1:5000/analyze", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                resultDiv.innerHTML = `<p><strong>Analysis Result:</strong></p><p>${data.analysis}</p>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style='color: red;'>Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

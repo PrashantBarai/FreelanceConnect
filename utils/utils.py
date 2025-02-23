@@ -36,8 +36,30 @@ from werkzeug.utils import secure_filename
 
 UPLOAD_FOLDER = "client_uploads"
 
-def save_profile_picture(profile_pic, userid):
-    user_dir = os.path.join(UPLOAD_FOLDER, f"client_{userid}", "pfp")
+# def save_profile_picture(profile_pic, userid):
+#     user_dir = os.path.join(UPLOAD_FOLDER, f"client_{userid}", "pfp")
+#     os.makedirs(user_dir, exist_ok=True)
+    
+#     for filename in os.listdir(user_dir):
+#         file_path = os.path.join(user_dir, filename)
+#         if os.path.isfile(file_path):
+#             os.remove(file_path)
+
+#     filename = secure_filename(profile_pic.filename)
+#     file_ext = os.path.splitext(filename)[1].lower()
+#     if file_ext not in [".jpg", ".jpeg", ".png"]:
+#         return None 
+
+#     save_path = os.path.join(user_dir, f"profile{file_ext}")
+#     profile_pic.save(save_path)
+
+#     return save_path
+
+
+UPLOAD_FOLDER = "freelance_uploads"
+
+def save_profile_picture_free(profile_pic, userid):
+    user_dir = os.path.join(UPLOAD_FOLDER, f"freelance_{userid}", "pfp")
     os.makedirs(user_dir, exist_ok=True)
     
     for filename in os.listdir(user_dir):
@@ -54,3 +76,5 @@ def save_profile_picture(profile_pic, userid):
     profile_pic.save(save_path)
 
     return save_path
+
+

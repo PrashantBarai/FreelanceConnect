@@ -21,6 +21,24 @@
 
     <!-- Main Content -->
     <main class="container mx-auto mt-8 px-6">
+        <!-- Matched Freelancers Section -->
+        {% if matched_freelancers_list %}
+        <div class="mt-8 bg-white p-6 rounded-lg shadow-md border border-gray-200">
+            <h2 class="text-xl font-bold text-blue-600">Matched Freelancers</h2>
+            <ul class="mt-4 space-y-4">
+                {% for freelancer in matched_freelancers_list %}
+                    <li class="border p-4 rounded-md shadow-sm bg-gray-50">
+                        <p class="font-semibold text-lg">{{ freelancer.name }}</p>
+                        <p class="text-gray-700">Skills: {{ freelancer.skills | join(', ') }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% else %}
+        <p class="text-gray-600 mt-4">No matching freelancers found.</p>
+        {% endif %}
+
+        <!-- Client Posts Section -->
         {% if posts %}
             <ul class="space-y-6">
                 {% for post in posts %}
@@ -33,8 +51,9 @@
                             <h3 class="text-2xl font-bold text-blue-600">{{ post.Title | safe }}</h3>
                         {% endif %}
                 
+                        <!-- Content to expand/collapse -->
                         {% if post.Content %}
-                            <p class="mt-2 text-gray-700 truncate" style="max-height: 4.5rem; overflow: hidden;">
+                            <p class="content mt-2 text-gray-700 truncate" style="max-height: 4.5rem; overflow: hidden;">
                                 {{ post.Content | safe }}
                             </p>
                         {% endif %}
@@ -50,7 +69,6 @@
                             {% endif %}
                         </div>
 
-                        <!-- Buttons -->
                         <div class="mt-4 flex gap-4">
                             <button class="show-more text-blue-600 font-semibold" onclick="toggleDetails(this)">Show More</button>
                             <button class="match-btn mt-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700"
@@ -64,77 +82,63 @@
     </main>
     
     <script>
-        function matchPost(button) {
-            let postId = button.getAttribute("data-postid");
-    
-            fetch("/match", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ postid: postId })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.matched_freelancers.length > 0) {
-                    let resultHTML = "<h3 class='text-lg font-bold mt-4'>Matched Freelancers:</h3><ul class='mt-2'>";
-                    data.matched_freelancers.forEach(freelancer => {
-                        resultHTML += `<li class='border p-2 rounded mt-1'>
-                                        <strong>${freelancer.name}</strong> - Skills: ${freelancer.skills.join(", ")}
-                                      </li>`;
-                    });
-                    resultHTML += "</ul>";
-                    button.parentElement.insertAdjacentHTML("beforeend", resultHTML);
-                } else {
-                    alert("No matching freelancers found.");
-                }
-            })
-            .catch(error => console.error("Error:", error));
-        }
-
-
-
-
-
-        
-        function applyFilters() {
-            let searchQuery = document.getElementById('search').value.toLowerCase();
-            let budgetFilter = document.getElementById('filterBudget').value;
-            let locationFilter = document.getElementById('filterLocation').value.toLowerCase();
-            
-            document.querySelectorAll('.job-card').forEach(card => {
-                let title = card.dataset.title.toLowerCase();
-                let budget = parseFloat(card.dataset.budget);
-                let location = card.dataset.location.toLowerCase();
-                let show = true;
-                
-                if (searchQuery && !title.includes(searchQuery)) show = false;
-                if (locationFilter && !location.includes(locationFilter)) show = false;
-                if (budgetFilter === 'low' && budget >= 500) show = false;
-                if (budgetFilter === 'medium' && (budget < 500 || budget > 1000)) show = false;
-                if (budgetFilter === 'high' && budget <= 1000) show = false;
-                
-                card.style.display = show ? 'block' : 'none';
-            });
-        }
-
         function toggleDetails(button) {
-            let content = button.previousElementSibling.previousElementSibling; // The <p> element containing the content
+            // Find the closest parent job card
+            const jobCard = button.closest('.job-card');
+            
+            // Find the content element within the job card
+            const content = jobCard.querySelector('.content');
+
             if (content.classList.contains('truncate')) {
+                // Expand the content
                 content.classList.remove('truncate');
                 content.style.maxHeight = 'none';
                 button.textContent = "Show Less";
             } else {
+                // Collapse the content
                 content.classList.add('truncate');
                 content.style.maxHeight = '4.5rem';
                 button.textContent = "Show More";
             }
         }
 
-        function matchPost(title) {
-            alert("Matching with: " + title);
-            // You can add an AJAX call here to process the match
+        function matchPost(button) {
+            let postId = button.getAttribute("data-postid");
+            button.disabled = true;  // Disable button to prevent multiple clicks
+        
+            fetch("/match", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ postid: postId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                let parentDiv = button.closest(".job-card");
+                let existingList = parentDiv.querySelector(".matched-freelancers");
+        
+                if (existingList) existingList.remove();
+        
+                if (data.matched_freelancers.length > 0) {
+                    let resultHTML = `<div class="matched-freelancers mt-4 bg-gray-100 p-4 rounded-lg shadow">
+                                        <h3 class="text-lg font-bold mb-2">Matched Freelancers:</h3>
+                                        <ul class="list-disc pl-5">`;
+                    data.matched_freelancers.forEach(freelancer => {
+                        resultHTML += `<li class="border p-2 rounded mt-1">
+                                          <strong>${freelancer.name}</strong> - Email: ${freelancer.email}
+                                          <span class="text-blue-600">(${data.percent*100})% Match</span>
+                                       </li>`;
+                    });
+                    resultHTML += "</ul></div>";
+        
+                    parentDiv.insertAdjacentHTML("beforeend", resultHTML);
+                } else {
+                    alert("No matching freelancers found.");
+                }
+            })
+            .catch(error => console.error("Error:", error))
+            .finally(() => button.disabled = false);  // Re-enable button after completion
         }
+        
     </script>
 
 </body>

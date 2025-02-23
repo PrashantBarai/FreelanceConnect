@@ -1,0 +1,6 @@
+flask
+pymongo
+bcrypt
+werkzeug
+flask-socketio
+eventlet
