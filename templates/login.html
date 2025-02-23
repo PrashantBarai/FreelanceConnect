@@ -4,27 +4,114 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - FreelanceConnect</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 40px auto;
+            padding: 0;
+        }
+
+        .login-header {
+            text-align: center;
+            padding: 30px 20px;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .login-header h2 {
+            font-size: 2em;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-form {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 0 0 15px 15px;
+        }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: var(--text-secondary);
+        }
+
+        .form-footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .form-footer a:hover {
+            color: var(--secondary-color);
+        }
+
+        .login-form .btn {
+            width: 100%;
+            margin-top: 20px;
+            padding: 12px;
+            font-size: 1.1em;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Add floating label animation */
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 20px;
+            border: 2px solid rgba(18, 140, 126, 0.2);
+            border-radius: 25px;
+            outline: none;
+            font-size: 16px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 10px rgba(18, 140, 126, 0.2);
+        }
+    </style>
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+    <div class="container login-container animate-fade-in">
+        <div class="login-header header">
+            <h2>Welcome Back</h2>
+        </div>
+        <div class="login-form">
+            <form action="/auth/login" method="POST">
+                <div class="input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
 
-    <div class="bg-white p-8 rounded-lg shadow-lg w-96 animate__animated animate__fadeInDown">
-        <h2 class="text-2xl font-bold text-center text-blue-600">Login</h2>
-        <form action="/auth/login" method="POST" class="mt-4">
-            <label class="block mb-2 text-gray-700">Username</label>
-            <input type="text" name="username" required class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-900 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
 
-            <label class="block mt-3 mb-2 text-gray-700">Password</label>
-            <input type="password" name="password" required class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-900 focus:ring-2 focus:ring-blue-400 focus:outline-none">
-
-            <button type="submit" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition">
-                Login
-            </button>
-        </form>
-        <p class="text-center mt-4 text-gray-600">Don't have an account? 
-            <a href="/auth/signup" class="text-blue-500 hover:underline">Sign Up</a>
-        </p>
+                <button type="submit" class="btn btn-primary">
+                    Login
+                </button>
+            </form>
+            <div class="form-footer">
+                <p>Don't have an account? 
+                    <a href="/auth/signup">Sign Up</a>
+                </p>
+            </div>
+        </div>
     </div>
-
 </body>
 </html>

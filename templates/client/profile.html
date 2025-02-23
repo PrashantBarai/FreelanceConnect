@@ -3,145 +3,275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Profile</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>FreelanceConnect - Profile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        :root {
+            --primary-color: #6C5CE7;
+            --secondary-color: #A362FF;
+            --accent-color: #FF6B6B;
+            --dark-color: #2D3436;
+            --light-color: #ECF0F1;
+            --gradient-1: linear-gradient(135deg, #6C5CE7, #A362FF);
+            --gradient-2: linear-gradient(135deg, #FF6B6B, #FF8E53);
+            --glass-bg: rgba(255, 255, 255, 0.15);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f7fafc;
+            min-height: 100vh;
+            background: linear-gradient(45deg, #2D3436, #6C5CE7);
+            color: var(--light-color);
+            line-height: 1.6;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(108, 92, 231, 0.1) 0%, transparent 25%),
+                radial-gradient(circle at 80% 80%, rgba(255, 107, 107, 0.1) 0%, transparent 25%);
+            animation: backgroundAnimation 15s ease-in-out infinite alternate;
+            z-index: -1;
+        }
+
+        @keyframes backgroundAnimation {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
         }
 
         .profile-container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-            position: relative;
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
         }
 
         .profile-header {
-            font-size: 2.5rem;
-            color: #4a5568;
-            font-weight: 700;
-            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 3rem;
+            align-items: center;
+            padding: 3rem;
         }
 
-        .form-label {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 8px;
-        }
-
-        .form-input, .form-textarea {
-            padding: 15px;
-            border-radius: 10px;
-            border: 2px solid #e2e8f0;
-            width: 100%;
-            background-color: #f9fafb;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-input:focus, .form-textarea:focus {
-            border-color: #3182ce;
-            outline: none;
-        }
-
-        .form-input::placeholder, .form-textarea::placeholder {
-            color: #a0aec0;
-        }
-
-        .form-textarea {
-            resize: vertical;
-        }
-
-        .btn-save {
-            width: 100%;
-            background-color: #3182ce;
-            color: white;
-            padding: 15px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: 10px;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn-save:hover {
-            background-color: #2b6cb0;
+        .profile-avatar {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
         }
 
         .profile-image {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 4px solid #e2e8f0;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            cursor: pointer;
+            border-radius: 50%;
         }
 
-        .info-section {
-            margin-top: 30px;
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
         }
 
-        .info-card {
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
+        .profile-name {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin: 0;
         }
 
-        .info-header {
+        .profile-title {
+            font-size: 1.25rem;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .profile-meta {
+            display: flex;
+            gap: 2rem;
+            font-size: 1rem;
+            color: var(--light-color);
+            opacity: 0.9;
+        }
+
+        .profile-meta span {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-            font-weight: bold;
-            color: #2d3748;
+            gap: 0.5rem;
         }
 
-        .info-content {
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .stat-card {
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
             font-size: 1.1rem;
-            color: #4a5568;
-            line-height: 1.6;
+            font-weight: 500;
+            opacity: 0.9;
         }
 
-        .no-picture {
-            font-style: italic;
-            color: #a0aec0;
+        .content-section {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
         }
 
-        .info-item {
-            margin-bottom: 10px;
+        .content-card {
+            padding: 2rem;
         }
 
-        .icon {
-            width: 20px;
-            height: 20px;
-            color: #3182ce;
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            position: relative;
         }
 
-        .edit-btn {
-            background-color: #3182ce;
-            color: white;
-            padding: 6px 12px;
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -0.5rem;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: var(--gradient-1);
+            border-radius: 3px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+            border: 1px solid var(--glass-border);
             border-radius: 8px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--light-color);
+            transition: all 0.3s ease;
         }
 
-        .edit-btn:hover {
-            background-color: #2b6cb0;
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.15);
         }
 
-        .editable {
-            display: none;
+        textarea.form-input {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .skill-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .skill-tag {
+            padding: 0.5rem 1rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding: 1rem 0;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            border-radius: 10px;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--light-color);
+        }
+
+        @media (max-width: 768px) {
+            .profile-container {
+                padding: 1rem;
+            }
+
+            .profile-header {
+                grid-template-columns: 1fr;
+                text-align: center;
+                gap: 2rem;
+                padding: 2rem;
+            }
+
+            .profile-avatar {
+                margin: 0 auto;
+                width: 150px;
+                height: 150px;
+            }
+
+            .profile-meta {
+                justify-content: center;
+            }
+
+            .profile-name {
+                font-size: 2rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -158,16 +288,27 @@
         </div>
     </nav>
     <div class="max-w-4xl mx-auto profile-container">
-        <h2 class="profile-header">{{client.name}}</h2>
+        <div class="profile-header">
+            <div class="profile-avatar">
+                {% if client and client.profile_pic %}
+                    <img src=".././../{{ client.profile_pic }}" alt="Profile Picture" class="profile-image">
+                {% else %}
+                    <i class="fas fa-user"></i>
+                {% endif %}
+            </div>
+            <div class="profile-info">
+                <h1 class="profile-name">{{client.name}}</h1>
+                <p class="profile-title">Professional Freelancer</p>
+                <div class="profile-meta">
+                    <span><i class="fas fa-map-marker-alt"></i> Location</span>
+                    <span><i class="fas fa-briefcase"></i> Experience: 5 years</span>
+                </div>
+            </div>
+        </div>
         <form action="{{ url_for('client_profile', userid=userid) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
             
             <div>
                 <label class="form-label">Profile Picture</label>
-                {% if client and client.profile_pic %}
-                    <img src=".././../{{ client.profile_pic }}" alt="Profile Picture" class="profile-image" id="profile-picture">
-                {% else %}
-                    <img src="default-profile-pic.jpg" alt="Profile Picture" class="profile-image" id="profile-picture">
-                {% endif %}
                 <input type="file" name="profile_pic" accept="image/*" class="form-input mt-2">
             </div>
             
@@ -220,6 +361,60 @@
                 <button type="submit" class="btn-save">Save Profile</button>
             </div>
         </form>
+        <div class="profile-stats">
+            <div class="stat-card">
+                <div class="stat-value">25</div>
+                <div class="stat-label">Projects Completed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">4.9</div>
+                <div class="stat-label">Rating</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">98%</div>
+                <div class="stat-label">Success Rate</div>
+            </div>
+        </div>
+
+        <div class="profile-content">
+            <div class="content-section">
+                <div class="content-card">
+                    <h2 class="section-title">About Me</h2>
+                    <div class="form-group">
+                        <textarea name="about" class="form-input" rows="4" placeholder="Tell us about yourself">{{client.about if client else ''}}</textarea>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <h2 class="section-title">Skills</h2>
+                    <div class="skill-list">
+                        {% for skill in skills %}
+                            <span class="skill-tag">{{skill}}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="form-group mt-4">
+                        <input type="text" name="skills" class="form-input" placeholder="Add skills (comma separated)" value="{{','.join(skills) if skills else ''}}">
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <h2 class="section-title">Contact Information</h2>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-input" value="{{client.email if client else ''}}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" name="phone" class="form-input" value="{{client.phone if client else ''}}" required>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="{{ url_for('client_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
     </div>
 
     <script>

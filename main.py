@@ -1,15 +1,23 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, send_from_directory
 from pymongo import MongoClient
 import bcrypt
 from werkzeug.utils import secure_filename
 import base64
 from utils.utils import convert_lists_to_html, save_profile_picture
 
-app = Flask(__name__)
+# Initialize Flask app with explicit static folder path
+app = Flask(__name__, 
+            static_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), 'static')),
+            static_url_path='/static')
 app.secret_key = "your_secret_key_here"
 
-client = MongoClient("mongodb://localhost:27017/")
+# Add route for serving static files
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory(app.static_folder, filename)
+
+client = MongoClient("mongodb+srv://ammar:ObxTTUFj8gCDJek7@cluster0.o2qwc.mongodb.net/")
 db = client["freelanceconnect"]
 users_collection = db["users"]
 posts_collection = db["posts"]
