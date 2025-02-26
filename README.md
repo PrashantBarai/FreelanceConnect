@@ -26,7 +26,7 @@ FreelanceConnect is a web application designed to connect clients with freelance
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/FreelanceConnect.git
+   git clone https://github.com/PrashantBarai/FreelanceConnect.git
    cd FreelanceConnect
 2. **Run main.py**:
    ```bash
