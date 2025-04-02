@@ -137,7 +137,8 @@ def add_comment(postid):
         print("Invalid request: Missing comment or user ID.")
         return jsonify({"success": False, "message": "Invalid request"}), 400
 
-    user = users_collection.find_one({"_id": ObjectId(user_id)})
+    resp = users_table.get_item({"_id": user_id})
+    if resp['Item']: user = resp['Item']
     if not user:
         print("User not found:", user_id)
         return jsonify({"success": False, "message": "User not found"}), 404
@@ -361,7 +362,8 @@ def match_post():
                 match_percent = round((len(matched_skills) / len(required_skills)) * 100, 2)
                 total_match_percentages.append(match_percent)
 
-                freelancer = users_collection.find_one({"_id": ObjectId(freelancer_id)})
+                resp = users_table.get_item({"_id": freelancer_id})
+                if resp['Item']: freelancer = resp['Item']
                 if freelancer:
                     matched_freelancers_list.append({
                         "freelancer_id": freelancer_id,
@@ -448,8 +450,8 @@ def client_profile(userid):
         return redirect(url_for("client_profile", userid=session['userid']))
 
     client_data = profile_collection.find_one({"uid": userid})
-    user = users_collection.find_one({"_id": ObjectId(userid)}) if ObjectId.is_valid(userid) else None
-
+    resp = users_table.get_item({"_id": userid}) if ObjectId.is_valid(userid) else None
+    if resp['Item']:user = resp['Item']
     if request.method == "POST":
         profile_pic = request.files.get("profile_pic")
         name = request.form.get("name")
@@ -476,9 +478,19 @@ def client_profile(userid):
         else:
             profile_collection.insert_one(update_data)
 
-        users_collection.update_one(
-            {"_id": ObjectId(userid)},
-            {"$set": {"profile_url": f"https://aws-image-bucket2207.s3.amazonaws.com/client_profile_pictures/{userid}"}}
+        # users_collection.update_one(
+        #     {"_id": ObjectId(userid)},
+        #     {"$set": {"profile_url": f"https://aws-image-bucket2207.s3.amazonaws.com/client_profile_pictures/{userid}"}}
+        # )
+        response = users_table.update_item(
+            Key={
+                'user_id': userid  # Replace with actual user_id (partition key)
+            },
+            UpdateExpression="SET profile_url = :url",
+            ExpressionAttributeValues={
+                ':url': f"https://aws-image-bucket2207.s3.amazonaws.com/client_profile_pictures/{userid}"  # Replace with actual user_id
+            },
+            ReturnValues="UPDATED_NEW"  # This returns the updated attributes
         )
         return redirect(url_for("client_profile", userid=userid))
 
@@ -543,13 +555,19 @@ def freelancer_profile(userid):
             profile_collection.update_one({"uid": userid}, {"$set": update_data})
         else:
             profile_collection.insert_one(update_data)
-            curruser = users_collection.find_one({"uid": userid})
+            curruser = users_table.get_item({"uid": userid})
+            if curruser['Item']: curruser = curruser['Item']
             if curruser:
-                users_collection.update_one(
-                    {"uid": userid},
-                    {"$set": {"profile_url": f"localhost:5000/home/profile/freelance/{userid}"}}
+                response = users_table.update_item(
+                    Key={
+                        'user_id': userid  # Replace with actual user_id (partition key)
+                    },
+                    UpdateExpression="SET profile_url = :url",
+                    ExpressionAttributeValues={
+                        ':url': f"https://aws-image-bucket2207.s3.amazonaws.com/client_profile_pictures/{userid}"  # Replace with actual user_id
+                    },
+                    ReturnValues="UPDATED_NEW"  # This returns the updated attributes
                 )
-
         return redirect(url_for("freelancer_profile", userid=userid))  
 
     client_data = profile_collection.find_one({"uid": userid})
@@ -656,7 +674,8 @@ def freelance_posts():
 def client_chatroom():
     if "userid" not in session:
         return redirect(url_for("login"))
-    clients = users_collection.find({"user_type": "client"}) 
+    clients = users_table.get_item({"user_type": "client"}) 
+    if clients['Item']:clients=clients['Item']
     return render_template("freelancer/clients.html", clients=clients)
 
 
@@ -666,7 +685,8 @@ def client_chatroom():
 def home_clients():
     if "userid" not in session:
         return redirect(url_for("login"))
-    user = users_collection.find_one({"_id": ObjectId(session["userid"]), "user_type":"client"})
+    response = users_table.get_item(Key={"_id": session["userid"], "user_type":"client"})
+    if response['Item']:user = response['Item']
     if user and "chatrooms" in user:
         chatrooms = user["chatrooms"]
     else:
@@ -687,7 +707,8 @@ chatroom_collection = db['chatroom']
 def start_chat():
     if "userid" in session:
         freelancer_id = session["userid"]  # ID of the freelancer
-        client = users_collection.find_one({"username":request.form.get("other_user_id")})
+        resp = users_table.get_item(Key={"username":request.form.get("other_user_id")})
+        if resp['Item']: client = resp['Item']
         print(client)
         client_id = str(client.get("_id")) # ID of the client
 
@@ -700,14 +721,30 @@ def start_chat():
         session["room_id"] = room_id
         session["other_user_id"] = client_id
 
-        users_collection.update_one(
-            {"_id": ObjectId(freelancer_id)},
-            {"$addToSet": {"chatrooms": room_id}}  
+        # Update freelancer's chatrooms list
+        response = users_table.update_item(
+            Key={
+                'user_id': freelancer_id  # Partition key, adjust as per your schema
+            },
+            UpdateExpression="ADD chatrooms :room_id",  # ADD operation to append to the list
+            ExpressionAttributeValues={
+                ':room_id': {room_id}  # room_id should be added as a set to avoid duplicates
+            },
+            ReturnValues="UPDATED_NEW"  # Optional: to return the updated attributes
         )
-        users_collection.update_one(
-            {"_id": ObjectId(client_id)},
-            {"$addToSet": {"chatrooms": room_id}}  
+
+        # Update client's chatrooms list
+        response = users_table.update_item(
+            Key={
+                'user_id': client_id  # Partition key, adjust as per your schema
+            },
+            UpdateExpression="ADD chatrooms :room_id",  # ADD operation to append to the list
+            ExpressionAttributeValues={
+                ':room_id': {room_id}  # room_id should be added as a set to avoid duplicates
+            },
+            ReturnValues="UPDATED_NEW"  # Optional: to return the updated attributes
         )
+
 
         # Initialize the chatroom in the collection
         chatroom_collection.insert_one({
