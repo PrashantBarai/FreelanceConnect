@@ -6,11 +6,10 @@ import PyPDF2
 # Load environment variables
 load_dotenv(override=True)
 
-# Groq API configuration
-API_KEY = os.getenv("GROQ_TOKEN")  # Ensure this is correctly set
+
+API_KEY = os.getenv("GROQ_TOKEN")  
 BASE_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# Function to extract text from a PDF resume
 def extract_text_from_pdf(pdf_path):
     with open(pdf_path, "rb") as file:
         reader = PyPDF2.PdfReader(file)
@@ -50,14 +49,3 @@ def analyze_resume(resume_text):
     """
     return chat_with_llama(prompt)
 
-# Example Usage
-if __name__ == "__main__":
-    # Path to the resume PDF
-    
-    resume_path = "ammar-resume.pdf"  
-    resume_text = extract_text_from_pdf(resume_path)
-    print("Extracted Resume Text:\n", resume_text)
-
-    # Step 2: Analyze the resume
-    analysis_result = analyze_resume(resume_text)
-    print("\nResume Analysis:\n", analysis_result)

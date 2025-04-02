@@ -5,20 +5,27 @@ import bcrypt
 from werkzeug.utils import secure_filename
 import base64
 from utils.utils import convert_lists_to_html
+from boto3.dynamodb.conditions import Attr
+
 # , save_profile_picture, save_profile_picture_free
 from dotenv import load_dotenv
+import boto3
+import uuid 
 
 load_dotenv()
 
-# Get the Hugging Face API token
 CON = os.getenv("CON_STR")
-
+print(CON)
 app = Flask(__name__)
 app.secret_key = "your_secret_key_here"
-
+AWS_REGION = "ap-south-1"  # Change based on your AWS region
+dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
+users_table = dynamodb.Table("users")
 client = MongoClient(CON)
 db = client["freelanceconnect"]
-users_collection = db["users"]
+# users_collection = db["users"]
+users_table = dynamodb.Table("users")
+
 posts_collection = db["posts"]
 file_collection = db['files']
 profile_collection = db['profile']
@@ -40,10 +47,6 @@ def landingpage():
     return render_template("landingpage.html")
 from flask import send_from_directory
 
-# @app.route("/client_uploads/<path:filename>")
-# def uploaded_file(filename):
-#     return send_from_directory("client_uploads", filename)
-
 @app.route("/auth/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
@@ -53,19 +56,25 @@ def signup():
         password = data.get("password")
         user_type = data.get("user_type")
 
-        if users_collection.find_one({"email": email}):
+        # Query using the correct key (_id is primary key)
+        response = users_table.scan(FilterExpression=Attr("username").eq(username))
+
+        if response["Items"]:  # If user exists
             return jsonify({"message": "User already exists"}), 400
 
-        hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-        users_collection.insert_one({
+        hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+        # Store user with _id as primary key
+        user_id = str(uuid.uuid4())
+        users_table.put_item(Item={
+            "_id": user_id,
             "username": username,
             "email": email,
             "hashed_password": hashed_pw,
-            "user_type": user_type,
+            "user_type": user_type
         })
         return redirect(url_for("login"))
     return render_template("signup.html")
-
 
 @app.route("/auth/login", methods=["GET", "POST"])
 def login():
@@ -73,18 +82,26 @@ def login():
         data = request.form
         username = data.get("username")
         password = data.get("password")
-        user = users_collection.find_one({"username": username})
-        if user and bcrypt.checkpw(password.encode("utf-8"), user["hashed_password"]):
+
+        # Retrieve user based on correct key schema
+        response = users_table.scan(FilterExpression=Attr("username").eq(username))
+        user = response["Items"][0] if response["Items"] else None
+
+        if user and bcrypt.checkpw(password.encode("utf-8"), user["hashed_password"].encode("utf-8")):
             session["username"] = user["username"]
             session["user_type"] = user["user_type"]
             session["email"] = user["email"]
-            session["userid"] = str(user["_id"])
+            session["userid"] = user["_id"]
             return redirect(url_for("home"))
+
         return jsonify({"message": "Invalid credentials"}), 401
+
     return render_template("login.html")
+
 
 @app.route("/home", methods=["GET", "POST"])
 def home():
+    print("Session Data at /home:", session)  # Debug session
     if "userid" in session:
         user_type = session.get("user_type", "").lower()
         posts = list(posts_collection.find({}))
@@ -95,9 +112,10 @@ def home():
             return render_template("client/client_dashboard.html", posts=posts)
         elif user_type == "freelancer":
             return render_template("freelancer/freelancer_dashboard.html", posts=posts)
+        return redirect(url_for("login"))  # If `user_type` is missing
+    else:
+        print("❌ User ID missing in session!")  # Debugging missing session
         return redirect(url_for("login"))
-    return redirect(url_for("login"))
-
 
 
 from bson import ObjectId
@@ -145,7 +163,6 @@ def add_comment(postid):
         return jsonify({"success": False, "message": "Failed to add comment"}), 500
     
     
-
 @app.route("/home/posts", methods=["GET", "POST"])
 def posts():
     print("Request method:", request.method)
@@ -154,46 +171,57 @@ def posts():
         if request.method == "POST":
             print("Form submitted!")
 
+            # Retrieve form data
             title = request.form.get("title")
             content = request.form.get("description")
             location = request.form.get("location")
             budget = request.form.get("budget")
-            documents = request.files.getlist("document")
+            documents = request.files.getlist("documents")  # Use request.files.getlist for multiple files
             skills_required = request.form.get("skills_required")
 
             print("Title:", title)
             print("Content:", content)
             print("Documents:", [doc.filename for doc in documents] if documents else "No document")
+
+            # Validate required fields
             if not title or not content:
                 print("Missing fields!")
                 return "Missing title or content", 400
+
+            # Create post data
             post_data = {
                 "Title": title,
                 "Content": content,
-                "Location":location,
+                "Location": location,
                 "Budget": budget,
-                "Multimedia": [],
+                "Multimedia": [],  # Initialize Multimedia as an empty list
                 "Comments": [],
                 "Skills": skills_required.split(',') if skills_required else [],
                 "UID": session["userid"],
                 "user_type": session["user_type"]
             }
+
             inserted_post = posts_collection.insert_one(post_data)
-            post_id = str(inserted_post.inserted_id)  
+            post_id = str(inserted_post.inserted_id)
+
             user_folder = os.path.join(app.config["UPLOAD_FOLDER"], f"client_{session['userid']}")
             post_folder = os.path.join(user_folder, "posts", post_id, "multimedia")
-            os.makedirs(post_folder, exist_ok=True)  
+            os.makedirs(post_folder, exist_ok=True)
+
             for doc in documents:
                 if doc and allowed_file(doc.filename):
                     filename = secure_filename(doc.filename)
                     file_path = os.path.join(post_folder, filename)
                     doc.save(file_path)
                     post_data["Multimedia"].append(file_path)  
-                    print(file_path)
-            posts_collection.update_one({"_id": inserted_post.inserted_id}, {"$set": post_data})
+            posts_collection.update_one(
+                {"_id": inserted_post.inserted_id},
+                {"$set": {"Multimedia": post_data["Multimedia"]}}
+            )
+
             print("Post stored in collection!")
-            
             return redirect(url_for("home"))
+
         return render_template("client/client_dashboard.html")
     return redirect(url_for("login"))
 
@@ -224,7 +252,7 @@ def chat_with_llama(prompt):
         "Content-Type": "application/json"
     }
     data = {
-        "model": "llama3-8b-8192",  # Adjust the model name if needed
+        "model": "llama3-8b-8192",
         "messages": [{"role": "user", "content": prompt}]
     }
     
@@ -235,7 +263,6 @@ def chat_with_llama(prompt):
         return f"Error: {response.status_code} - {response.json()}"
 
 
-# Function to analyze a resume and recommend improvements based on job requirements
 def analyze_resume(resume_text, job_requirements):
     prompt = f"""
     Analyze the following resume and provide recommendations to better match the job requirements:
@@ -256,17 +283,21 @@ def analyze_resume(resume_text, job_requirements):
 def analyze():
     if "resume" not in request.files:
         return jsonify({"error": "No resume file uploaded"}), 400
+    
     if "job_requirements" not in request.form:
         return jsonify({"error": "Job requirements not provided"}), 400
+    
     resume_file = request.files["resume"]
     job_requirements = request.form["job_requirements"]
 
-    resume_path = "uploaded_resume.pdf"
-    resume_file.save(resume_path)
-    resume_text = extract_text_from_pdf(resume_path)
+    file_path = os.path.abspath(resume_file.filename)  
+    resume_file.save(file_path)
+    resume_text = extract_text_from_pdf(file_path)
     analysis_result = analyze_resume(resume_text, job_requirements)
-
-    return jsonify({"analysis": analysis_result})
+    return jsonify({
+        "analysis": analysis_result,
+        "file_path": file_path
+    })
 
 
 @app.route('/analyze', methods=['GET','POST'])
@@ -365,6 +396,49 @@ app.config["ALLOWED_EXTENSIONS"] = ALLOWED_EXTENSIONS
 @app.route("/home/uploads/<path:filename>")
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+
+import os
+from werkzeug.utils import secure_filename
+import boto3
+from botocore.exceptions import NoCredentialsError
+
+# Initialize S3 client
+s3 = boto3.client('s3')
+
+BUCKET_NAME = "aws-image-bucket2207"
+
+import mimetypes
+
+def save_profile_picture_tos3(profile_pic, userid, user_type):
+    try:
+        filename = secure_filename(profile_pic.filename)
+        file_ext = os.path.splitext(filename)[1].lower()
+        if file_ext not in [".jpg", ".jpeg", ".png"]:
+            return None
+
+        s3_key = f"{user_type}_profile_pictures/{userid}{file_ext}"
+        content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        s3.upload_fileobj(
+            profile_pic,
+            BUCKET_NAME,
+            s3_key,
+            ExtraArgs={'ContentType': content_type}
+        )
+
+        s3_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
+        return s3_url
+    except NoCredentialsError:
+        print("Credentials not available")
+        return None
+    except Exception as e:
+        print(f"Error saving profile picture: {e}")
+        return None
+
+def get_profile_picture_url(userid, user_type, file_ext):
+    return f"https://{BUCKET_NAME}.s3.amazonaws.com/{user_type}_profile_pictures/{userid}{file_ext}"
+
+
 @app.route("/home/profile/client/<userid>", methods=["GET", "POST"])
 def client_profile(userid):
     if "userid" not in session:
@@ -374,7 +448,7 @@ def client_profile(userid):
         return redirect(url_for("client_profile", userid=session['userid']))
 
     client_data = profile_collection.find_one({"uid": userid})
-    user = users_collection.find_one({"_id": ObjectId(userid)})  # Ensure ObjectId is used
+    user = users_collection.find_one({"_id": ObjectId(userid)}) if ObjectId.is_valid(userid) else None
 
     if request.method == "POST":
         profile_pic = request.files.get("profile_pic")
@@ -393,10 +467,10 @@ def client_profile(userid):
         }
 
         if profile_pic:
-            profile_pic_path = save_profile_picture(profile_pic, userid, session['user_type'])
+            profile_pic_path = save_profile_picture_tos3(profile_pic, userid, session['user_type'])
+            print(profile_pic_path)
             if profile_pic_path:
-                update_data["profile_pic"] = profile_pic_path  
-
+                update_data["profile_pic"] = profile_pic_path
         if client_data:
             profile_collection.update_one({"uid": userid}, {"$set": update_data})
         else:
@@ -404,12 +478,13 @@ def client_profile(userid):
 
         users_collection.update_one(
             {"_id": ObjectId(userid)},
-            {"$set": {"profile_url": f"localhost:5000/home/profile/client/{userid}"}}
+            {"$set": {"profile_url": f"https://aws-image-bucket2207.s3.amazonaws.com/client_profile_pictures/{userid}"}}
         )
         return redirect(url_for("client_profile", userid=userid))
 
     client_data = profile_collection.find_one({"uid": userid})
     return render_template("client/profile.html", client=client_data, userid=userid)
+
 
 # Freelancer Profile Route
 @app.route("/home/profile/freelance/<userid>", methods=["GET", "POST"])
@@ -569,8 +644,7 @@ def freelance_posts():
             return redirect(url_for("home"))
 
        
-        posts = list(posts_collection.find({}))  # Show all posts
-
+        posts = list(posts_collection.find({})) 
         return render_template("freelancer/freelancer_dashboard.html", posts=posts)
    
     return redirect(url_for("login"))
@@ -622,7 +696,7 @@ def start_chat():
         if freelancer_id == client_id:
             return "Error: Freelancer and client cannot be the same user!", 400  # Prevent self-chat
 
-        room_id = str(ObjectId())  # Generate a unique room ID
+        room_id = str(ObjectId())  
         session["room_id"] = room_id
         session["other_user_id"] = client_id
 
@@ -667,25 +741,21 @@ def handle_message(data):
     sender = session.get("username")
     timestamp = datetime.now().strftime("%H:%M")
     
-    # Store message in the chatroom collection under the correct room
     if room:
         chatroom = chatroom_collection.find_one({"room_id": room})
         if chatroom:
             if sender == session.get("username"):  # Check if message sender is the logged in user
                 if sender == chatroom["freelancer_id"]:
-                    # Save message to freelancer's message array
                     chatroom_collection.update_one(
                         {"room_id": room},
                         {"$push": {"freelancer_msg": {"sender": sender, "message": message, "timestamp": timestamp}}}
                     )
                 else:
-                    # Save message to client's message array
                     chatroom_collection.update_one(
                         {"room_id": room},
                         {"$push": {"client_msg": {"sender": sender, "message": message, "timestamp": timestamp}}}
                     )
             else:
-                # Assuming the other user is the client
                 if sender == chatroom["freelancer_id"]:
                     chatroom_collection.update_one(
                         {"room_id": room},

@@ -6,10 +6,8 @@ def convert_lists_to_html(content):
     if not content:
         return "" 
     lines = content.split('\n')
-        
     html_lines = []
     in_list = False
-
     for line in lines:
         if line.strip().startswith('- '):
             if not in_list:
